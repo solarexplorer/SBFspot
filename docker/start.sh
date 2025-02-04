@@ -75,112 +75,94 @@ readUploadConfig() {
 
 checkSBFConfig() {
     ERROR_FLAG=0
-    if `mount | grep -q -e "$confdir "`; then
-        if [ -r $confdir/SBFspot.cfg ]; then
-            readConfig
-            if [ -n "$CSV_STORAGE" ] && [ $CSV_STORAGE -eq 1 ]; then
-                if [ `getConfigValue CSV_Export` -eq 0 ]; then
-                    if [ -w $confdir/SBFspot.cfg ]; then
-                        setConfigValue "CSV_Export" "1"
-                        echo "Wrong CSV_Export value in SBFspot.cfg. I change it to 1."
-                    else
-                        echo "$confdir/SBFspot.cfg is not writeable by User with ID `id -u sbfspot`."
-                        echo "Please change file permissions of SBFspot.cfg or ensure, that the \"CSV_Export\""
-                        echo "value is 1"
-                        ERROR_FLAG=1
-                    fi
-                fi
-            fi
-            if [ `getConfigValue CSV_Export` -eq 1 ]; then   # if CSV_Export=1 then OutputPath and OutputPathEvents must point to /var/sbfspot
-                if `mount | grep -q -e "$datadir "`; then
-                    if [ -w $confdir/SBFspot.cfg ]; then
-                        if ! `getConfigValue OutputPath | grep -q -e "^/var/sbfspot$"` && \
-                                ! `getConfigValue OutputPath | grep -q -e "^/var/sbfspot/"`; then    
-                            setConfigValue "OutputPath" "$datadir/%Y"
-                            echo "Wrong OutputPath value in SBFspot.cfg. I change it to \"$datadir/%Y\""
-                        fi
-
-                        if ! `getConfigValue OutputPathEvents | grep -q -e "^/var/sbfspot$"` && \
-                                ! `getConfigValue OutputPathEvents | grep -q -e "^/var/sbfspot/"`; then
-                            setConfigValue "OutputPathEvents" "$datadir/%Y/Events"
-                            echo "Wrong OutputPathEvents value in SBFspot.cfg. I change it to \"$datadir/%Y/Events\""
-                        fi
-                    else
-                        echo "$confdir/SBFspot.cfg is not writeable by User with ID `id -u sbfspot`."
-                        echo "Please change file permissions of SBFspot.cfg or ensure, that the \"OutputPath\" and \"OutputPathEvents\" Options"
-                        echo "point to the Directory $datadir/..."
-                        ERROR_FLAG=1
-                    fi
-                else
-                    echo "$datadir is not mapped to a directory outside the container => csv files would not be persistant."
-                    echo "Please map the directory and restart the container."
-                    exit 1
-                fi
-                
-                # check if data directory is writeable
-                if [ ! -w $datadir ]; then
-                    echo "Mapped Data directory is not writeable for user with ID `id -u sbfspot`."
-                    echo "Please change file permissions accordingly and restart the container."
-                    exit 1
-                fi
-            fi
-            if [ -n "$MQTT_ENABLE" ] && [ $MQTT_ENABLE -eq 1 ]; then
-                if ! `getConfigValue MQTT_Publisher | grep -q -e "^/usr/bin/mosquitto_pub"`; then
-                    setConfigValue "MQTT_Publisher" "/usr/bin/mosquitto_pub"
-                    echo "Wrong MQTT_Publisher value in SBFspot.cfg corrected."
-                fi
-                if `getConfigValue MQTT_Host | grep -q -e "^test.mosquitto.org"`; then
-                    echo "Warning: Please configure the \"MQTT_Host\" value in SBFspot.cfg."
-                fi
-            fi
-            if [ "$DB_STORAGE" = "sqlite" ]; then
-                if `mount | grep -q -e "$datadir "`; then # check if data dir is mapped into the container 
-                    if [ ! -e $datadir/sbfspot.db ]; then # check if database file exists
-                        if [ -z "$INIT_DB" ] || [ $INIT_DB -ne 1 ]; then
-                            echo "SQLite database file under \"$datadir/sbfspot.db\" does not exist. Please initialize the database."
-                            exit 1
-                        fi
-                    else
-                        if [ ! -w $datadir/sbfspot.db ]; then
-                            echo "SQLite database file under \"$datadir/sbfspot.db\" is not writeable for user with ID `id -u sbfspot`."
-                            echo "Please change file permissions accordingly and restart the container."
-                            ERROR_FLAG=1
-                        fi
-                        if [ ! -r $datadir/sbfspot.db ]; then
-                            echo "SQLite database file under \"$datadir/sbfspot.db\" is not readable for user with ID `id -u sbfspot`."
-                            echo "Please change file permissions accordingly and restart the container."
-                            ERROR_FLAG=1
-                        fi
-                    fi
-                else
-                    echo "$datadir is not mapped to a directory outside the container => database would not be persistant."
-                    echo "Please map the directory and restart the container."
-                    exit 1
-                fi
-                
-                if [ -w $confdir/SBFspot.cfg ]; then # check if SQLite DB is correctly configured in SBFspot.cfg
-                    if ! `getConfigValue SQL_Database | grep -q -e "^$datadir/sbfspot.db"`; then    
-                        setConfigValue "SQL_Database" "$datadir/sbfspot.db"
-                        echo "Wrong SQL_Database value in SBFspot.cfg. I change it to \"$datadir/sbfspot.db\""
-                    fi
+    if [ -r $confdir/SBFspot.cfg ]; then
+        readConfig
+        if [ -n "$CSV_STORAGE" ] && [ $CSV_STORAGE -eq 1 ]; then
+            if [ `getConfigValue CSV_Export` -eq 0 ]; then
+                if [ -w $confdir/SBFspot.cfg ]; then
+                    setConfigValue "CSV_Export" "1"
+                    echo "Wrong CSV_Export value in SBFspot.cfg. I change it to 1."
                 else
                     echo "$confdir/SBFspot.cfg is not writeable by User with ID `id -u sbfspot`."
-                    echo "Please change file permissions of SBFspot.cfg or ensure, that the \"SQL_Database\" option"
-                    echo "points to the file $datadir/sbfspot.db"
+                    echo "Please change file permissions of SBFspot.cfg or ensure, that the \"CSV_Export\""
+                    echo "value is 1"
                     ERROR_FLAG=1
                 fi
             fi
-        else
-            echo "$confdir/SBFspot.cfg is not readable by user with ID `id -u sbfspot`."
-            echo "Please change file permissions accordingly and restart the container."
-            exit 1
+        fi
+        if [ `getConfigValue CSV_Export` -eq 1 ]; then   # if CSV_Export=1 then OutputPath and OutputPathEvents must point to /var/sbfspot
+            if [ -w $confdir/SBFspot.cfg ]; then
+                if ! `getConfigValue OutputPath | grep -q -e "^/var/sbfspot$"` && \
+                        ! `getConfigValue OutputPath | grep -q -e "^/var/sbfspot/"`; then
+                    setConfigValue "OutputPath" "$datadir/%Y"
+                    echo "Wrong OutputPath value in SBFspot.cfg. I change it to \"$datadir/%Y\""
+                fi
+
+                if ! `getConfigValue OutputPathEvents | grep -q -e "^/var/sbfspot$"` && \
+                        ! `getConfigValue OutputPathEvents | grep -q -e "^/var/sbfspot/"`; then
+                    setConfigValue "OutputPathEvents" "$datadir/%Y/Events"
+                    echo "Wrong OutputPathEvents value in SBFspot.cfg. I change it to \"$datadir/%Y/Events\""
+                fi
+            else
+                echo "$confdir/SBFspot.cfg is not writeable by User with ID `id -u sbfspot`."
+                echo "Please change file permissions of SBFspot.cfg or ensure, that the \"OutputPath\" and \"OutputPathEvents\" Options"
+                echo "point to the Directory $datadir/..."
+                ERROR_FLAG=1
+            fi
+
+            # check if data directory is writeable
+            if [ ! -w $datadir ]; then
+                echo "Mapped Data directory is not writeable for user with ID `id -u sbfspot`."
+                echo "Please change file permissions accordingly and restart the container."
+                exit 1
+            fi
+        fi
+        if [ -n "$MQTT_ENABLE" ] && [ $MQTT_ENABLE -eq 1 ]; then
+            if ! `getConfigValue MQTT_Publisher | grep -q -e "^/usr/bin/mosquitto_pub"`; then
+                setConfigValue "MQTT_Publisher" "/usr/bin/mosquitto_pub"
+                echo "Wrong MQTT_Publisher value in SBFspot.cfg corrected."
+            fi
+            if `getConfigValue MQTT_Host | grep -q -e "^test.mosquitto.org"`; then
+                echo "Warning: Please configure the \"MQTT_Host\" value in SBFspot.cfg."
+            fi
+        fi
+        if [ "$DB_STORAGE" = "sqlite" ]; then
+            if [ ! -e $datadir/sbfspot.db ]; then # check if database file exists
+                if [ -z "$INIT_DB" ] || [ $INIT_DB -ne 1 ]; then
+                    echo "SQLite database file under \"$datadir/sbfspot.db\" does not exist. Please initialize the database."
+                    exit 1
+                fi
+            else
+                if [ ! -w $datadir/sbfspot.db ]; then
+                    echo "SQLite database file under \"$datadir/sbfspot.db\" is not writeable for user with ID `id -u sbfspot`."
+                    echo "Please change file permissions accordingly and restart the container."
+                    ERROR_FLAG=1
+                fi
+                if [ ! -r $datadir/sbfspot.db ]; then
+                    echo "SQLite database file under \"$datadir/sbfspot.db\" is not readable for user with ID `id -u sbfspot`."
+                    echo "Please change file permissions accordingly and restart the container."
+                    ERROR_FLAG=1
+                fi
+            fi
+
+            if [ -w $confdir/SBFspot.cfg ]; then # check if SQLite DB is correctly configured in SBFspot.cfg
+                if ! `getConfigValue SQL_Database | grep -q -e "^$datadir/sbfspot.db"`; then
+                    setConfigValue "SQL_Database" "$datadir/sbfspot.db"
+                    echo "Wrong SQL_Database value in SBFspot.cfg. I change it to \"$datadir/sbfspot.db\""
+                fi
+            else
+                echo "$confdir/SBFspot.cfg is not writeable by User with ID `id -u sbfspot`."
+                echo "Please change file permissions of SBFspot.cfg or ensure, that the \"SQL_Database\" option"
+                echo "points to the file $datadir/sbfspot.db"
+                ERROR_FLAG=1
+            fi
         fi
     else
-        echo "$confdir is not mapped to a directory outside the container => Config file can't be read."
-        echo "Please map the directory and restart the container."
+        echo "$confdir/SBFspot.cfg is not readable by user with ID `id -u sbfspot`."
+        echo "Please change file permissions accordingly and restart the container."
         exit 1
     fi
-    
+
     if [ $ERROR_FLAG -eq 1 ]; then
         echo "Please configure the listed value(s) and restart the container."
         exit 1
@@ -189,46 +171,40 @@ checkSBFConfig() {
  
 checkSBFUploadConfig() {
     ERROR_FLAG=0
-    if `mount | grep -q -e "$confdir "`; then
-        if [ -r $confdir/SBFspotUpload.cfg ]; then
-            readUploadConfig
-            tempValue=`getUploadConfigValue PVoutput_SID`
-            if [ -z $tempValue ];then
-                echo "Please set the \"PVoutput_SID\" option in \"SBFspotUpload.cfg\"."
-                echo "Otherwise the production data can't be uploaded to PVoutput."
-                ERROR_FLAG=1
-            fi
-            tempValue=`getUploadConfigValue PVoutput_Key`
-            if [ -z $tempValue ];then
-                echo "Please set the \"PVoutput_Key\" option in \"SBFspotUpload.cfg\"."
-                echo "Otherwise the production data can't be uploaded to PVoutput."
-                ERROR_FLAG=1
-            fi
-            
-            if [ "$DB_STORAGE" = "sqlite" ]; then # check if SQLite DB is correctly configured in SBFspot.cfg
-                if ! `getUploadConfigValue SQL_Database | grep -q -e "^$datadir/sbfspot.db"`; then
-                    if [ -w $confdir/SBFspotUpload.cfg ]; then
-                        setUploadConfigValue "SQL_Database" "$datadir/sbfspot.db"
-                        echo "Wrong SQL_Database value in SBFspotUpload.cfg. I change it to \"$datadir/sbfspot.db\""
-                    else
-                        echo "$confdir/SBFspotUpload.cfg is not writeable by User with ID `id -u sbfspot`."
-                        echo "Please change file permissions of SBFspotUpload.cfg or ensure, that the \"SQL_Database\" option"
-                        echo "points to the file $datadir/sbfspot.db"
-                        ERROR_FLAG=1
-                    fi
+    if [ -r $confdir/SBFspotUpload.cfg ]; then
+        readUploadConfig
+        tempValue=`getUploadConfigValue PVoutput_SID`
+        if [ -z $tempValue ];then
+            echo "Please set the \"PVoutput_SID\" option in \"SBFspotUpload.cfg\"."
+            echo "Otherwise the production data can't be uploaded to PVoutput."
+            ERROR_FLAG=1
+        fi
+        tempValue=`getUploadConfigValue PVoutput_Key`
+        if [ -z $tempValue ];then
+            echo "Please set the \"PVoutput_Key\" option in \"SBFspotUpload.cfg\"."
+            echo "Otherwise the production data can't be uploaded to PVoutput."
+            ERROR_FLAG=1
+        fi
+
+        if [ "$DB_STORAGE" = "sqlite" ]; then # check if SQLite DB is correctly configured in SBFspot.cfg
+            if ! `getUploadConfigValue SQL_Database | grep -q -e "^$datadir/sbfspot.db"`; then
+                if [ -w $confdir/SBFspotUpload.cfg ]; then
+                    setUploadConfigValue "SQL_Database" "$datadir/sbfspot.db"
+                    echo "Wrong SQL_Database value in SBFspotUpload.cfg. I change it to \"$datadir/sbfspot.db\""
+                else
+                    echo "$confdir/SBFspotUpload.cfg is not writeable by User with ID `id -u sbfspot`."
+                    echo "Please change file permissions of SBFspotUpload.cfg or ensure, that the \"SQL_Database\" option"
+                    echo "points to the file $datadir/sbfspot.db"
+                    ERROR_FLAG=1
                 fi
             fi
-        else
-            echo "$confdir/SBFspotUpload.cfg is not readable by user with ID `id -u sbfspot`."
-            echo "Please change file permissions accordingly and restart the container."
-            exit 1
         fi
     else
-        echo "$confdir is not mapped to a directory outside the container => Config file can't be read."
-        echo "Please map the directory and restart the container."
+        echo "$confdir/SBFspotUpload.cfg is not readable by user with ID `id -u sbfspot`."
+        echo "Please change file permissions accordingly and restart the container."
         exit 1
     fi
-    
+
     if [ $ERROR_FLAG -eq 1 ]; then
         echo "Please configure the listed value(s) and restart the container."
         exit 1
@@ -255,19 +231,13 @@ setupSBFspotOptions() {
 
 initDatabase() {
     if [ "$DB_STORAGE" = "sqlite" ]; then
-        if `mount | grep -q -e "$datadir "`; then
-            # check if data directory is writeable
-            if [ ! -w $datadir ]; then
-                echo "Mapped Data directory is not writeable for user with ID `id -u sbfspot`."
-                echo "Please change file permissions accordingly and restart the container."
-                exit 1
-            fi
-            sqlite3 $datadir/sbfspot.db < $homedir/CreateSQLiteDB.sql
-        else
-            echo "$datadir is not mapped to a directory outside the container => database would not be persistant."
-            echo "Please map the directory and restart the container."
+        # check if data directory is writeable
+        if [ ! -w $datadir ]; then
+            echo "Mapped Data directory is not writeable for user with ID `id -u sbfspot`."
+            echo "Please change file permissions accordingly and restart the container."
             exit 1
         fi
+        sqlite3 $datadir/sbfspot.db < $homedir/CreateSQLiteDB.sql
         exit 0
     elif [ "$DB_STORAGE" = "mysql" ] || [ "$DB_STORAGE" = "mariadb" ]; then
         HOST=$(getConfigValue SQL_Hostname)
