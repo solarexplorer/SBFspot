@@ -443,27 +443,16 @@ while true; do
         timeout --foreground 180 $homedir/$sbfspotbinary $sbfspot_options -cfg$confdir/SBFspot.cfg
     fi
 
-    # if QUIET SBFspot Option is set, produce less output
-    if echo $sbfspot_options | grep -q "\-q"; then
-        DELTA=$((60 - SBFSPOT_INTERVAL / 60))
-        if [ $(date +%H) -eq 23 ] && [ $(date +%M) -ge $DELTA ];then   # last entry of a day
-            if [ $(date +%u) -eq 7 ];then   # sunday
-                echo -n "week "
-                date +%W\ %Y
-            else                           # all other days
-                date +%a
-            fi
-        else
-            echo -n "."
+    DELTA=$((60 - SBFSPOT_INTERVAL / 60))
+    if [ $(date +%H) -eq 23 ] && [ $(date +%M) -ge $DELTA ];then   # last entry of a day
+        if [ $(date +%u) -eq 7 ];then   # sunday
+            echo -n "week "
+            date +%W\ %Y
+        else                           # all other days
+            date +%a
         fi
-        sleep $SBFSPOT_INTERVAL
     else
-        date
-        cnt=$SBFSPOT_INTERVAL
-        while [ "$cnt" -gt 0 ]; do
-            printf "\rWaiting %d seconds..." $cnt
-            sleep 1
-            cnt=$(( cnt - 1 ))
-        done 
+        echo -n "."
     fi
+    sleep $SBFSPOT_INTERVAL
 done
